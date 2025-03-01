@@ -1,0 +1,40 @@
+.main-layout {
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--color-bg-default);
+    align-items: center;
+}
+
+.content-layout {
+    width: 100%;
+    height: 100%;
+    padding: var(--space-3xl);
+    align-items: center;
+    justify-content: center;
+}
+
+.drop-file {
+    width: 500px !important;
+    height: 300px !important;
+}
+
+.time-series-zone {
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-xl);
+}
+
+.time-series {
+    width: 100%;
+    height: 100%;
+}
+
+.time-series-analyze-button {
+    width: fit-content;
+}
+
+.time-series-control {
+    gap: var(--space-m);
+}

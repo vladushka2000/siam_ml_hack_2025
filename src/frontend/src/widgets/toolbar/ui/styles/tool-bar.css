@@ -1,0 +1,7 @@
+.tool-bar {
+    padding: var(--space-l);
+    background-color: var(--color-bg-secondary);
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+}
