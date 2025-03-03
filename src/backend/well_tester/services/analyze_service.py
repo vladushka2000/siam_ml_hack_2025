@@ -1,0 +1,51 @@
+import datetime
+import json
+import logging
+from pathlib import Path
+import uuid
+
+from ai_model import ai_model
+from config import rabbitmq_config
+from models.dto import broker_message_dto
+from models.dto.time_series_dto import ResultDTO, TimeSeriesDTO
+
+config = rabbitmq_config.config
+logger = logging.getLogger(__name__)
+
+
+class AnalyzeService:
+    """
+    Сервис для анализа временного ряда
+    """
+
+    async def analyze(
+        self,
+        time_series: TimeSeriesDTO,
+        session_id: uuid.UUID
+    ) -> broker_message_dto.BrokerMessageDTO:
+        """
+        Выполнить анализ временного ряда
+        :param time_series: временной ряд
+        :param session_id: идентификатор сессии
+        :return: сообщение об успешности анализа
+        """
+
+        analyze_data = ResultDTO(is_success=False, dots=[])
+
+        try:
+            if ai_model.model is None:
+                with open(Path("tests/test-data.txt"), "r", encoding="utf-8") as file:
+                    file_content = file.read()
+                    analyze_data = ResultDTO(is_success=True, **json.loads(file_content))
+            else:
+                ...
+
+
+        except Exception as e:
+            logger.error(f"Произошла ошибка во время анализа: {e}")
+
+        return broker_message_dto.BrokerMessageDTO(
+            id=session_id,
+            body=analyze_data.model_dump(by_alias=True),
+            date=datetime.datetime.now()
+        )
