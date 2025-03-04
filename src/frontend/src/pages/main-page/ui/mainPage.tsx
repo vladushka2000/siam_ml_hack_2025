@@ -9,6 +9,7 @@ import { Toolbar } from '../../../widgets/toolbar/ui/toolbar';
 import { TimeSeriesZone } from './timeSeriesUI/timeSeriesZone';
 import { timeSeriesStore } from '../../../widgets/time-series/store/timeSeriesStore';
 import { FileDrop } from './fileDrop';
+import { SnackBarWrapper } from '../../../shared/snack-bar/ui/snackBar';
 
 export const App = observer(() => {
   return (
@@ -22,6 +23,7 @@ export const App = observer(() => {
           }
         </Layout>
       </Layout>
+      <SnackBarWrapper />
     </Theme>
   );
 });

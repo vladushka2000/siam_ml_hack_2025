@@ -1,0 +1,7 @@
+.snack-bar-wrapper {
+  position: fixed;
+  width: 400px;
+  right: var(--space-xs);
+  bottom: var(--space-xs);
+  z-index: 1000
+}

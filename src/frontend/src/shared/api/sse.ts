@@ -4,6 +4,7 @@ export const createSSEClient = () => {
   let eventSource: EventSource | null = null;
   let messageQueue: string[] = [];
   let resolvePromise: ((message: string) => void) | null = null;
+  const eventTarget = new EventTarget(); // Используем EventTarget
 
   const connect = (url: string): void => {
     if (eventSource) {
@@ -28,6 +29,8 @@ export const createSSEClient = () => {
 
     eventSource.onerror = (event: Event) => {
       console.error('SSE error:', event);
+      const errorEvent = new CustomEvent('error', { detail: new Error('SSE connection error') });
+      eventTarget.dispatchEvent(errorEvent);
       disconnect();
     };
 
@@ -49,8 +52,17 @@ export const createSSEClient = () => {
       return messageQueue.shift()!;
     }
 
-    return new Promise<string>((resolve) => {
+    return new Promise<string>((resolve, reject) => {
       resolvePromise = resolve;
+
+      // Обработка ошибок
+      const onError = (event: Event) => {
+        const customEvent = event as CustomEvent<Error>; // Приводим тип
+        reject(customEvent.detail); // Отклоняем промис с ошибкой
+        eventTarget.removeEventListener('error', onError); // Убираем обработчик
+      };
+
+      eventTarget.addEventListener('error', onError);
     });
   };
 
@@ -58,5 +70,7 @@ export const createSSEClient = () => {
     connect,
     disconnect,
     waitForMessage,
+    on: (event: string, listener: (event: Event) => void) => eventTarget.addEventListener(event, listener),
+    off: (event: string, listener: (event: Event) => void) => eventTarget.removeEventListener(event, listener),
   };
 };

@@ -5,6 +5,7 @@ import { roundToDecimal } from '../../../shared/utils/decimalRounder';
 import { post } from '../../../shared/api/api';
 import { PressureFeature } from '../types/timeSeriesType';
 import { createSSEClient } from '../../../shared/api/sse';
+import { snackBarStore } from '../../../shared/snack-bar/stores/snackBarStore';
 
 
 export class TimeSeriesStore {
@@ -29,29 +30,49 @@ export class TimeSeriesStore {
   error: string | null = null;
   
   parseTimeSeriesFile = (file: File) => {
-    this.parseLoading = true
+    this.parseLoading = true;
 
     setTimeout(() => {
-      runInAction(() => {
+      runInAction(() => {      
         const reader = new FileReader();
-        reader.onload = (e: ProgressEvent<FileReader>) => {
-          const content = e.target?.result as string;
-          const rows = content.split('\n');
-          const initData = rows.map((row) => {
-            const rowWithoutNewLineChar = row.replace('\r', '');
-            const values = rowWithoutNewLineChar.split('\t')
 
-            return {
-              t: roundToDecimal(parseFloat(values[0]), 2),
-              p: roundToDecimal(parseFloat(values[1]), 2),
-              dp: roundToDecimal(parseFloat(values[2]), 2),
-              pFeature: PressureFeature.DValue
+        reader.onload = (e: ProgressEvent<FileReader>) => {
+          try {
+            const content = e.target?.result as string;
+        
+            if (content.length === 0) {
+              throw new Error('Файл пуст');
             }
-          });
-          this.setTimeSeries(initData)
+        
+            const rows = content.split('\n');
+            const initData = rows.map((row) => {
+              const rowWithoutNewLineChar = row.replace('\r', '');
+              const values = rowWithoutNewLineChar.split('\t');
+
+              if (values.length < 3) {
+                throw new Error('Неверный формат файла');
+              };
+        
+              return {
+                t: roundToDecimal(parseFloat(values[0]), 2),
+                p: roundToDecimal(parseFloat(values[1]), 2),
+                dp: roundToDecimal(parseFloat(values[2]), 2),
+                pFeature: PressureFeature.DValue,
+              };
+            });
+        
+            this.setTimeSeries(initData);
+          } catch (error) {
+            snackBarStore.addItem({
+              key: 0,
+              message: 'Произошла ошибка при обработке файла',
+              status: 'alert',
+            });
+          } finally {
+            this.parseLoading = false;
+          }
         };
         reader.readAsText(file);
-        this.parseLoading = false;
       });
     }, 1000); // Задержка для плавности работы с приложением
   }
@@ -71,29 +92,75 @@ export class TimeSeriesStore {
       dots: this.timeSeries as DiagnosticTimeSeriesDot[]
     };
 
-    const response = await post(`/well-test/analyze/${sessionId}`, payload);
+    try {
+      await post(`/well-test/analyze/${sessionId}`, payload);
+    } catch {
+      runInAction(() => {
+        snackBarStore.addItem({
+          'key': 0,
+          'message': 'Произошла ошибка при отправке сообщения на анализ',
+          'status': 'alert'
+        });
+      });
 
-    if (response.status !== 200) {
-      throw new Error('Произошла ошибка при анализе');
+      this.analyzeLoading = false;
+
+      return;
     }
-    const analyzeMessage = await this.getLastAnalyzeMessage(sessionId);
-    this.setTimeSeries(analyzeMessage.dots);
-    const analyzeProperties = {
-      wb: analyzeMessage.wb,
-      ra: analyzeMessage.ra,
-      li: analyzeMessage.li,
-      bl: analyzeMessage.bl,
-      sp: analyzeMessage.sp,
-      pc: analyzeMessage.pc,
-      ib: analyzeMessage.ib
-    };
-    timeSeriesStore.setAnalyzeProperties(analyzeProperties);
-    this.analyzeFinished = true;
-    this.analyzeLoading = false;
+
+    try {
+      const analyzeMessage = await this.getLastAnalyzeMessage(sessionId);
+
+      if (!analyzeMessage.isSuccess) {
+        throw Error;
+      }
+
+      this.setTimeSeries(analyzeMessage.dots);
+      const analyzeProperties = {
+        wb: analyzeMessage.wb,
+        ra: analyzeMessage.ra,
+        li: analyzeMessage.li,
+        bl: analyzeMessage.bl,
+        sp: analyzeMessage.sp,
+        pc: analyzeMessage.pc,
+        ib: analyzeMessage.ib
+      };
+      timeSeriesStore.setAnalyzeProperties(analyzeProperties);
+      this.analyzeFinished = true;
+
+      runInAction(() => {
+        snackBarStore.addItem({
+          'key': 0,
+          'message': 'Анализ завершен',
+          'status': 'success'
+        });
+      });
+    } catch (error) {
+      runInAction(() => {
+        snackBarStore.addItem({
+          'key': 0,
+          'message': 'Произошла ошибка при анализе',
+          'status': 'alert'
+        });
+      });
+    } finally {
+      this.analyzeLoading = false;
+    }
   }
 
   getLastAnalyzeMessage = async (sessionId: string) => {
     const sseClient = createSSEClient();
+    
+    sseClient.on('error', () => {
+      runInAction(() => {
+        snackBarStore.addItem({
+          'key': 0,
+          'message': 'Произошла ошибка при доступе к серверу. Повторите попытку',
+          'status': 'alert'
+        });
+      });
+    });
+
     sseClient.connect(`/well-test/sse/${sessionId}`);
 
     try {
@@ -106,8 +173,15 @@ export class TimeSeriesStore {
         }
       }
     } catch (error) {
-      console.error('Error while waiting for SSE message:', error);
-      throw error;
+      runInAction(() => {
+        snackBarStore.addItem({
+          'key': 0,
+          'message': 'Произошла ошибка при получении данных. Повторите попытку',
+          'status': 'alert'
+        });
+      });
+
+      return;
     } finally {
       sseClient.disconnect();
     }
