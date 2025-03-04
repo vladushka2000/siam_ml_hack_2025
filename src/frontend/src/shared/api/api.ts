@@ -1,7 +1,6 @@
-
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
-import { backendDSN } from "../../settings/settings";
+import { backendDSN } from "../settings/settings";
 import { ApiResponse } from "./types";
 
 export const get = async (url: string, config?: AxiosRequestConfig): Promise<ApiResponse<any>> => {

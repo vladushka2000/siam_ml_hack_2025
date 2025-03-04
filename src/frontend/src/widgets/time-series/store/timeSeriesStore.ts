@@ -2,8 +2,9 @@ import { makeAutoObservable, runInAction } from 'mobx'
 
 import { AnalyzeProperties, DiagnosticTimeSeries, DiagnosticTimeSeriesDot } from '../types/timeSeriesType';
 import { roundToDecimal } from '../../../shared/utils/decimalRounder';
-import { post } from '../../../shared/api/sse/api';
+import { post } from '../../../shared/api/api';
 import { PressureFeature } from '../types/timeSeriesType';
+import { createSSEClient } from '../../../shared/api/sse';
 
 
 export class TimeSeriesStore {
@@ -63,20 +64,53 @@ export class TimeSeriesStore {
     this.analyzeProperties = newProperties
   }
 
-  analyzeTimeSeries = async (session_id: string) => {
+  sendToAnalyzeTimeSeries = async (sessionId: string) => {
     this.analyzeLoading = true;
 
     const payload: DiagnosticTimeSeries = {
       dots: this.timeSeries as DiagnosticTimeSeriesDot[]
     };
 
-    const response = await post(`/well-test/analyze/${session_id}`, payload);
+    const response = await post(`/well-test/analyze/${sessionId}`, payload);
 
     if (response.status !== 200) {
       throw new Error('Произошла ошибка при анализе');
     }
+    const analyzeMessage = await this.getLastAnalyzeMessage(sessionId);
+    this.setTimeSeries(analyzeMessage.dots);
+    const analyzeProperties = {
+      wb: analyzeMessage.wb,
+      ra: analyzeMessage.ra,
+      li: analyzeMessage.li,
+      bl: analyzeMessage.bl,
+      sp: analyzeMessage.sp,
+      pc: analyzeMessage.pc,
+      ib: analyzeMessage.ib
+    };
+    timeSeriesStore.setAnalyzeProperties(analyzeProperties);
+    this.analyzeFinished = true;
+    this.analyzeLoading = false;
+  }
 
-    const result = await response.data;
+  getLastAnalyzeMessage = async (sessionId: string) => {
+    const sseClient = createSSEClient();
+    sseClient.connect(`/well-test/sse/${sessionId}`);
+
+    try {
+      while (true) {
+        const message = await sseClient.waitForMessage();
+        const parsedMessage = JSON.parse(message);
+
+        if (parsedMessage) {
+          return parsedMessage;
+        }
+      }
+    } catch (error) {
+      console.error('Error while waiting for SSE message:', error);
+      throw error;
+    } finally {
+      sseClient.disconnect();
+    }
   }
 }
 
