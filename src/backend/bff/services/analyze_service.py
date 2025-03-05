@@ -20,14 +20,37 @@ class AnalyzeService:
     """
 
     @inject
-    async def analyze(
+    async def analyze_binary(
         self,
         time_series: diagnostic_time_series_dto.DiagnosticTimeSeries,
         session_id: uuid.UUID,
         producer: base_message_broker.BaseProducer = Provide[rabbitmq_di_container.ProducerContainer.producer]
     ) -> None:
         """
-        Начать анализ временного ряда
+        Начать анализ временного ряда для бинарной классификации
+        :param time_series: временной ряд
+        :param session_id: идентификатор сессии
+        :param producer: продюсер сообщений для анализа
+        """
+
+        analyze_message = broker_message_dto.BrokerMessageDTO(
+            id=session_id,
+            body=time_series.model_dump()
+        )
+
+        await producer.produce(config.exchange, config.routing_key, analyze_message)
+
+        logger.info(f"Сообщение {analyze_message.id} отправлено в очередь")
+
+    @inject
+    async def analyze_useful_data(
+        self,
+        time_series: diagnostic_time_series_dto.UsefulDataTimeSeries,
+        session_id: uuid.UUID,
+        producer: base_message_broker.BaseProducer = Provide[rabbitmq_di_container.ProducerContainer.producer]
+    ) -> None:
+        """
+        Начать анализ временного ряда для поиска полезной информации
         :param time_series: временной ряд
         :param session_id: идентификатор сессии
         :param producer: продюсер сообщений для анализа

@@ -1,7 +1,20 @@
 import enum
 
 
+class TimeSeriesType(enum.Enum):
+    """
+    Enum типов временных рядов
+    """
+
+    binary_ts = "Бинарные признаки ГДИС"
+    useful_data_ts = "Полезные данные ГДИС"
+
+
 class PressureFeature(enum.Enum):
+    """
+    Enum типов режима
+    """
+
     d_value = "Производная давления"
     bad_quality = "Некачественные данные"
     wellbore_storage = "Влияние ствола скважины"
