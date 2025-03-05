@@ -1,99 +1,37 @@
 import { makeAutoObservable, runInAction } from 'mobx'
 
-import { AnalyzeProperties, DiagnosticTimeSeries, DiagnosticTimeSeriesDot } from '../types/timeSeriesType';
-import { roundToDecimal } from '../../../shared/utils/decimalRounder';
+import { ITimeSeriesStore, TimeSeries, TimeSeriesDot, TimeSeriesInitData } from '../types/timeSeriesType';
 import { post } from '../../../shared/api/api';
-import { PressureFeature } from '../types/timeSeriesType';
 import { createSSEClient } from '../../../shared/api/sse';
+import { diagntosicTimeSeriesStore } from './diagnosticTimeSeries';
 import { snackBarStore } from '../../../shared/snack-bar/stores/snackBarStore';
 
 
 export class TimeSeriesStore {
-  constructor() {
+  constructor(timeSeriesStore: ITimeSeriesStore) {
     makeAutoObservable(this);
+    
+    this.currentTimeSeriesStore = timeSeriesStore;
   }
 
-  timeSeries: DiagnosticTimeSeriesDot[] | null = null;
-  analyzeProperties: AnalyzeProperties = {
-    wb: null,
-    ra: null,
-    li: null,
-    bl: null,
-    sp: null,
-    pc: null,
-    ib: null
-  };
+  currentTimeSeriesStore: ITimeSeriesStore;
 
-  parseLoading: boolean = false;
   analyzeLoading: boolean = false;
   analyzeFinished: boolean = false;
-  error: string | null = null;
-  
-  parseTimeSeriesFile = (file: File) => {
-    this.parseLoading = true;
 
-    setTimeout(() => {
-      runInAction(() => {      
-        const reader = new FileReader();
-
-        reader.onload = (e: ProgressEvent<FileReader>) => {
-          try {
-            const content = e.target?.result as string;
-        
-            if (content.length === 0) {
-              throw new Error('Файл пуст');
-            }
-        
-            const rows = content.split('\n');
-            const initData = rows.map((row) => {
-              const rowWithoutNewLineChar = row.replace('\r', '');
-              const values = rowWithoutNewLineChar.split('\t');
-
-              if (values.length < 3) {
-                throw new Error('Неверный формат файла');
-              };
-        
-              return {
-                t: roundToDecimal(parseFloat(values[0]), 2),
-                p: roundToDecimal(parseFloat(values[1]), 2),
-                dp: roundToDecimal(parseFloat(values[2]), 2),
-                pFeature: PressureFeature.DValue,
-              };
-            });
-        
-            this.setTimeSeries(initData);
-          } catch (error) {
-            snackBarStore.addItem({
-              key: 0,
-              message: 'Произошла ошибка при обработке файла',
-              status: 'alert',
-            });
-          } finally {
-            this.parseLoading = false;
-          }
-        };
-        reader.readAsText(file);
-      });
-    }, 1000); // Задержка для плавности работы с приложением
-  }
-
-  setTimeSeries = (parsedTimeSeries: DiagnosticTimeSeriesDot[] | null) => {
-    this.timeSeries = parsedTimeSeries
-  }
-
-  setAnalyzeProperties = (newProperties: AnalyzeProperties) => {
-    this.analyzeProperties = newProperties
+  parseFile = (file: File) => {
+    this.currentTimeSeriesStore.parseFile(file);
   }
 
   sendToAnalyzeTimeSeries = async (sessionId: string) => {
     this.analyzeLoading = true;
 
-    const payload: DiagnosticTimeSeries = {
-      dots: this.timeSeries as DiagnosticTimeSeriesDot[]
+    const payload: TimeSeriesInitData = {
+      dots: this.currentTimeSeriesStore.timeSeries as TimeSeriesDot[]
     };
 
     try {
-      await post(`/well-test/analyze/${sessionId}`, payload);
+      await post(`${this.currentTimeSeriesStore.analyzeDataEndpoint}/${sessionId}`, payload);
     } catch {
       runInAction(() => {
         snackBarStore.addItem({
@@ -109,23 +47,15 @@ export class TimeSeriesStore {
     }
 
     try {
-      const analyzeMessage = await this.getLastAnalyzeMessage(sessionId);
+      const analyzeMessage: TimeSeries = await this._getLastAnalyzeMessage(sessionId);
 
       if (!analyzeMessage.isSuccess) {
         throw Error;
       }
 
-      this.setTimeSeries(analyzeMessage.dots);
-      const analyzeProperties = {
-        wb: analyzeMessage.wb,
-        ra: analyzeMessage.ra,
-        li: analyzeMessage.li,
-        bl: analyzeMessage.bl,
-        sp: analyzeMessage.sp,
-        pc: analyzeMessage.pc,
-        ib: analyzeMessage.ib
-      };
-      timeSeriesStore.setAnalyzeProperties(analyzeProperties);
+      this.currentTimeSeriesStore.setTimeSeries(analyzeMessage.dots);
+      this.currentTimeSeriesStore.setAnalyzeProperties(analyzeMessage.analyzeProperties);
+
       this.analyzeFinished = true;
 
       runInAction(() => {
@@ -148,7 +78,7 @@ export class TimeSeriesStore {
     }
   }
 
-  getLastAnalyzeMessage = async (sessionId: string) => {
+  _getLastAnalyzeMessage = async (sessionId: string) => {
     const sseClient = createSSEClient();
     
     sseClient.on('error', () => {
@@ -188,4 +118,4 @@ export class TimeSeriesStore {
   }
 }
 
-export const timeSeriesStore = new TimeSeriesStore()
+export const timeSeriesStore = new TimeSeriesStore(diagntosicTimeSeriesStore)

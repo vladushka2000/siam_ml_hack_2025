@@ -17,9 +17,9 @@ export const App = observer(() => {
       <Layout direction='column' className='main-layout'>
         <Toolbar />
         <Layout className='content-layout'>
-          { timeSeriesStore.timeSeries ?
+          { timeSeriesStore.currentTimeSeriesStore.timeSeries?.length !== 0 ?
             <TimeSeriesZone /> :
-            !timeSeriesStore.parseLoading ? <FileDrop /> : <Loader type='dots' size='m' />
+            !timeSeriesStore.currentTimeSeriesStore.parseLoading ? <FileDrop /> : <Loader type='dots' size='m' />
           }
         </Layout>
       </Layout>

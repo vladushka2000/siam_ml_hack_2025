@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from 'mobx'
 
 import { timeSeriesStore } from '../../../widgets/time-series/store/timeSeriesStore';
+import { ITimeSeriesStore } from '../../../widgets/time-series/types/timeSeriesType';
 
 
 export class MainPageStore {
@@ -14,25 +15,21 @@ export class MainPageStore {
     this.sessionId = crypto.randomUUID();
   }
 
+  changeTimeSeriesStore = (newStore: ITimeSeriesStore) => {
+    timeSeriesStore.currentTimeSeriesStore = newStore;
+    this.makeNewAnalyze();
+  }
+
   makeNewAnalyze = () => {
     timeSeriesStore.analyzeFinished = false;
-    timeSeriesStore.setTimeSeries(null);
-    const analyzeProperties = {
-      wb: null,
-      ra: null,
-      li: null,
-      bl: null,
-      sp: null,
-      pc: null,
-      ib: null
-    };
-    timeSeriesStore.setAnalyzeProperties(analyzeProperties);
+    timeSeriesStore.currentTimeSeriesStore.setTimeSeries([]);
+    timeSeriesStore.currentTimeSeriesStore.setAnalyzeProperties({});
     this.generateNewSessionId();
 
-    timeSeriesStore.parseLoading = true;
+    timeSeriesStore.currentTimeSeriesStore.parseLoading = true;
     setTimeout(() => {
       runInAction(() => {
-        timeSeriesStore.parseLoading = false;
+        timeSeriesStore.currentTimeSeriesStore.parseLoading = false;
       });
     }, 500); // Задержка для плавности работы с приложением
   }

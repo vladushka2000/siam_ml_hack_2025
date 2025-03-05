@@ -1,3 +1,19 @@
+export enum TimeSeriesType {
+  binaryTS = 'Бинарные признаки ГДИС',
+  usefulDataTS = 'Полезные данные ГДИС',
+}
+
+export interface ITimeSeriesStore {
+  analyzeDataEndpoint: string,
+  timeSeriesType: TimeSeriesType,
+  timeSeries: TimeSeriesDot[] | null,
+  parseLoading: boolean,
+  analyzeProperties: AnalyzeProperties | {},
+  parseFile: (file: File) => any,
+  setTimeSeries: (parsedTimeSeries: TimeSeriesDot[]) => any,
+  setAnalyzeProperties: (newProperties: AnalyzeProperties | {}) => any
+}
+
 export enum PressureFeature {
   DValue = 'Производная давления',
   BadQuality = 'Некачественные данные',
@@ -10,15 +26,36 @@ export enum PressureFeature {
   ImpermeableBoundary = 'Непроницаемые границы'
 }
 
-export type DiagnosticTimeSeriesDot = {
+export type TimeSeriesDot = {
   t: number,
   p: number,
+}
+
+export type DiagnosticTimeSeriesDot = TimeSeriesDot & {
   dp: number,
   pFeature: PressureFeature
 }
 
-export type DiagnosticTimeSeries = {
+export type UsefulDataTimeSeriesDot = TimeSeriesDot & {
+  isUseful: boolean
+}
+
+export type TimeSeriesInitData = {
+  dots: TimeSeriesDot[],
+}
+
+export type TimeSeries = TimeSeriesInitData & {
+  isSuccess: boolean,
+  analyzeProperties: {}
+}
+
+export type DiagnosticTimeSeries = TimeSeries & {
   dots: DiagnosticTimeSeriesDot[]
+  analyzeProperties: AnalyzeProperties
+}
+
+export type UsefulDataTimeSeries = TimeSeries & {
+  dots: UsefulDataTimeSeriesDot[]
 }
 
 export type AnalyzeProperties = {

@@ -4,15 +4,27 @@ import { Layout } from '@consta/uikit/Layout';
 
 import "../styles/layout.css";
 import { timeSeriesStore } from '../../../../widgets/time-series/store/timeSeriesStore';
-import { TimeSeries } from '../../../../widgets/time-series/ui/timeSeries';
+import { BinaryTimeSeries } from '../../../../widgets/time-series/ui/binaryTimeSeries';
 import { mainPageStore } from '../../stores/mainPageStore';
 import { TimeSeriesControl } from './timeSeriesControl';
+import { DiagnosticTimeSeriesDot, TimeSeriesType, UsefulDataTimeSeriesDot } from '../../../../widgets/time-series/types/timeSeriesType';
+import { UsefulDataTimeSeries } from '../../../../widgets/time-series/ui/usefulDataTimeSeries';
 
 export const TimeSeriesZone = observer(() => {
   return (
     <Layout direction='column' className='time-series-zone'>
       <Layout direction='column' className='time-series'>
-        <TimeSeries dots={timeSeriesStore.timeSeries} />
+        {
+          timeSeriesStore.currentTimeSeriesStore.timeSeriesType === TimeSeriesType.binaryTS ?
+          <BinaryTimeSeries
+            dots={timeSeriesStore.currentTimeSeriesStore.timeSeries as DiagnosticTimeSeriesDot[]}
+            analyzedFinished={timeSeriesStore.analyzeFinished}
+          /> :
+          <UsefulDataTimeSeries
+            dots={timeSeriesStore.currentTimeSeriesStore.timeSeries as UsefulDataTimeSeriesDot[]}
+            analyzedFinished={timeSeriesStore.analyzeFinished}
+          />
+        }
       </Layout>
       <Layout direction='column' className='time-series-info-zone'>
         {

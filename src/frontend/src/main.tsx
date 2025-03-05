@@ -7,5 +7,5 @@ import { App } from './pages/main-page/ui/mainPage';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
-  </StrictMode>,
+  </StrictMode>
 )

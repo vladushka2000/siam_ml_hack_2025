@@ -5,7 +5,7 @@ import { timeSeriesStore } from '../../../widgets/time-series/store/timeSeriesSt
 
 export const FileDrop = observer(() => {
   const onDropFile = (files: File[]): void => {
-    timeSeriesStore.parseTimeSeriesFile(files[0])
+    timeSeriesStore.parseFile(files[0])
   }
 
   return (
