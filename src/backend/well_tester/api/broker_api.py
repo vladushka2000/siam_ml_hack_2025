@@ -6,7 +6,8 @@ from dependency_injector.wiring import inject, Provide
 from config import rabbitmq_config
 from interfaces import base_message_broker
 from models.dto.broker_message_dto import BrokerMessageDTO
-from models.dto.time_series_dto import TimeSeriesDTO
+from models.dto import time_series_dto
+from tools import enums
 from tools.di_containers import service_container
 
 config = rabbitmq_config.config
@@ -38,9 +39,16 @@ async def consume(
             date=message.date
         )
 
-        time_series = TimeSeriesDTO(**data.body)
+        time_series_type = data.body["time_series_type"]
 
-        return_message = await service.analyze(time_series, data.id)
+        if time_series_type == enums.TimeSeriesType.binary_ts.value:
+            time_series_data = time_series_dto.TimeSeriesDTO(**data.body)
+            return_message = await service.analyze_binary(time_series_data, data.id)
+        elif time_series_type == enums.TimeSeriesType.useful_data_ts.value:
+            time_series_data = time_series_dto.UsefulDataTimeSeriesDTO(**data.body)
+            return_message = await service.analyze_useful_data(time_series_data, data.id)
+        else:
+            raise ValueError("Неизвестный тип временного ряда")
 
         await producer.produce(config.exchange, f"session_id_key: {data.id}", return_message)
     except Exception as e:

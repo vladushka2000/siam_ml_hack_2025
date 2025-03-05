@@ -30,7 +30,8 @@ async def serve(
     :param producer: продюсер событий о конце расчета
     """
 
-    ai_model.model = None
+    ai_model.binary_model = None
+    ai_model.useful_data_model = None
 
     logger.info("Приложение запущено")
 
